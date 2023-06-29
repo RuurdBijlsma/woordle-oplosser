@@ -12,22 +12,32 @@
             <v-chip :value="10">10</v-chip>
             <v-chip :value="11">11</v-chip>
         </v-chip-group>
-        <div class="field mt-4">
+        <div class="hidden-textfield">
+            <textarea @input="handleKey($event)"></textarea>
+        </div>
+        <p class="mt-5" v-if="mobile">Klik op een letter op de kleur te veranderen</p>
+        <div class="field mt-4" :style="{
+            overflowX: mobile ? 'auto' : 'inherit'
+        }">
             <div class="letter-field" v-for="(row, j) in rows">
                 <div class="letter-container" v-for="(cell, i) in row">
-                    <div class="set-color">
+                    <div v-if="!mobile" class="set-color">
                         <div @click="cell.color = 'green'" class="green"></div>
                         <div @click="cell.color = 'yellow'" class="yellow"></div>
                         <div @click="cell.color = 'grey'" class="grey"></div>
                     </div>
                     <div class="input"
-                         :style="{backgroundColor: getColor(cell)}"
-                         @click="focusTile = [j, i]"
+                         :style="{
+                                backgroundColor: getColor(cell)
+                            }"
+                         @click="focus(j, i)"
                          :active="focusTile[0] === j && focusTile[1] === i">
                         {{ cell.letter }}
                     </div>
                 </div>
-                <v-btn class="close-button" icon="mdi-close" variant="plain" @click="clearField(j)"></v-btn>
+                <v-btn class="close-button" :style="{
+                    marginTop: mobile ? '20px' : '35px'
+                }" icon="mdi-close" variant="plain" size="35" @click="clearField(j)"></v-btn>
             </div>
         </div>
         <v-btn color="primary" class="mt-5" variant="tonal" @click="solve()">Oplossen</v-btn>
@@ -41,15 +51,18 @@
                     {{ option }}
                 </v-sheet>
             </div>
-            <p class="mt-5 mb-2" v-if="options.length > showOptions.length">en nog
-                {{ options.length - showOptions.length }} meer...</p>
-            <v-btn class="mb-10 mt-4" variant="tonal" @click="showLimit += 100">Laat meer zien</v-btn>
+            <template v-if="options.length > showOptions.length">
+                <p class="mt-5 mb-2">en nog
+                    {{ options.length - showOptions.length }} meer...</p>
+                <v-btn class="mb-10 mt-4" variant="tonal" @click="showLimit += 100">Laat meer zien</v-btn>
+            </template>
         </div>
         <div v-else-if="solveTried" class="text-center mt-10"><h2>Geen oplossingen gevonden</h2></div>
     </div>
 </template>
 
 <script lang="ts" setup>
+
 class Cell {
     letter: string;
     color: string;
@@ -60,18 +73,22 @@ class Cell {
     }
 }
 
-import {computed, onUnmounted, ref, watch} from "vue";
+import {computed, onMounted, onUnmounted, Ref, ref, watch} from "vue";
 import {useTheme} from "vuetify";
 
-const theme = useTheme()
-console.log(theme)
+const windowWidth = ref(window.innerWidth)
+let mobile = computed(() => windowWidth.value <= 600)
+window.addEventListener('resize', updateWindowWidth)
 
-document.addEventListener('keydown', handleKey)
-onUnmounted(() => document.removeEventListener('keydown', handleKey))
+function updateWindowWidth() {
+    windowWidth.value = window.innerWidth
+}
+
+onUnmounted(() => window.removeEventListener('resize', updateWindowWidth))
 
 let words: string[] = []
 let lenWords: any = {}
-fetch('/wordlist.txt').then(r => r.text().then(x => {
+fetch('wordlist.txt').then(r => r.text().then(x => {
     words = x.split('\n')
     for (let word of words) {
         if (lenWords[word.length] === undefined) lenWords[word.length] = []
@@ -116,6 +133,20 @@ watch(rows, () => {
     setTimeout(() => dontUpdate = false, 10)
 }, {deep: true})
 
+function focus(row: number, letter: number) {
+    let sameTile = focusTile.value[0] === row && focusTile.value[1] === letter
+    focusTile.value = [row, letter]
+    let textarea = document.querySelector('textarea') as HTMLTextAreaElement | null
+    if (textarea === null) return
+    textarea.focus()
+    textarea.selectionEnd = 3
+    if (mobile.value && sameTile) {
+        let colors = ['grey', 'yellow', 'green']
+        let cell = rows.value[row][letter]
+        cell.color = colors[(colors.indexOf(cell.color) + 1) % colors.length]
+    }
+}
+
 function addWordRow(word: string) {
     let lastRow = rows.value[rows.value.length - 1]
     for (let i = 0; i < word.length; i++) {
@@ -123,9 +154,10 @@ function addWordRow(word: string) {
     }
 }
 
-function handleKey(e: KeyboardEvent) {
+function handleKey(e: any) {
+    console.log(e)
     let [row, letter] = focusTile.value
-    if (e.key === 'Backspace') {
+    if (e.data === null) {
         rows.value[row][letter].letter = ''
         let nextLetter = letter - 1;
         let nextRow = row
@@ -136,7 +168,7 @@ function handleKey(e: KeyboardEvent) {
         }
         focusTile.value = [nextRow, nextLetter]
     } else {
-        let input = e.key?.toLowerCase?.() ?? '';
+        let input = e.data?.toLowerCase?.() ?? '';
         if (!'abcdefghijklmnopqrstuvwxyz'.includes(input)) return
         console.log("set key", input)
         rows.value[row][letter].letter = input
@@ -149,6 +181,12 @@ function handleKey(e: KeyboardEvent) {
         }
         focusTile.value = [nextRow, nextLetter]
     }
+    let textarea = document.querySelector('textarea') as HTMLTextAreaElement | null
+    setTimeout(() => {
+        if (textarea === null) return
+        textarea.value = "asdf"
+        textarea.selectionEnd = 3
+    }, 10)
 }
 
 function getColor(cell: Cell) {
@@ -259,9 +297,19 @@ function solve() {
 
 <style scoped>
 .container {
-    width: calc(100% - 40px);
+    width: calc(100% - 10px);
     margin: 0 auto;
     padding: 20px 10px 10px;
+}
+
+.hidden-textfield {
+    height: 0px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.field {
+    overflow-x: auto;
 }
 
 .letter-field {
@@ -279,8 +327,8 @@ function solve() {
 
 .set-color {
     display: flex;
-    height: 15px;
-    width: calc(80px - 12px);
+    height: 18px;
+    width: calc(100% - 12px);
     margin-left: 6px;
     border-top-right-radius: 10px;
     border-top-left-radius: 10px;
@@ -307,6 +355,15 @@ function solve() {
 
 .close-button {
     margin-top: 35px;
+}
+
+@media (max-width: 600px) {
+    .input {
+        width: 65px !important;
+        height: 65px !important;
+        padding: 12px !important;
+        font-size: 30px !important;
+    }
 }
 
 .input {
