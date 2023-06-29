@@ -122,6 +122,7 @@ function addWordRow(word) {
 function handleKey(e) {
   let [row, letter] = focusTile.value
   if (e.key === 'Backspace') {
+    rows.value[row][letter].letter = ''
     let nextLetter = letter - 1;
     let nextRow = row
     if (nextLetter < 0) {
@@ -129,7 +130,6 @@ function handleKey(e) {
       nextLetter = letterCount.value - 1
       nextRow--
     }
-    rows.value[row][letter].letter = ''
     focusTile.value = [nextRow, nextLetter]
   } else {
     let input = e.key?.toLowerCase?.() ?? '';
