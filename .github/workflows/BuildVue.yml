@@ -1,4 +1,4 @@
-name: Build Vue
+name: Build for GH Pages
 on: [push]
 jobs:
   build_vue:
