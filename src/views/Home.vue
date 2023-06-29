@@ -36,15 +36,16 @@
                 <p class="font-weight-bold text-uppercase">{{ options.length }} mogelijkheden</p>
             </div>
             <div class="solve-options mt-5">
-                <v-sheet color="" border rounded class="solve-option" v-for="option in showOptions"
+                <v-sheet border rounded class="solve-option" v-for="option in showOptions"
                          @click="addWordRow(option)">
                     {{ option }}
                 </v-sheet>
             </div>
             <p class="mt-5 mb-2" v-if="options.length > showOptions.length">en nog
                 {{ options.length - showOptions.length }} meer...</p>
-            <v-btn class="mb-10" variant="tonal" @click="showLimit += 100">Laat meer zien</v-btn>
+            <v-btn class="mb-10 mt-4" variant="tonal" @click="showLimit += 100">Laat meer zien</v-btn>
         </div>
+        <div v-else-if="solveTried" class="text-center mt-10"><h2>Geen oplossingen gevonden</h2></div>
     </div>
 </template>
 
@@ -70,7 +71,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleKey))
 
 let words: string[] = []
 let lenWords: any = {}
-fetch('/wordlist-filtered.txt').then(r => r.text().then(x => {
+fetch('/wordlist.txt').then(r => r.text().then(x => {
     words = x.split('\n')
     for (let word of words) {
         if (lenWords[word.length] === undefined) lenWords[word.length] = []
@@ -85,11 +86,13 @@ const options = ref([] as string[])
 const showLimit = ref(50)
 const focusTile = ref([0, 0])
 const showOptions = computed(() => options.value.slice(0, showLimit.value))
+const solveTried = ref(false)
 
 watch(letterCount, () => {
     options.value = []
     showLimit.value = 50
     rows.value = []
+    solveTried.value = false
 })
 
 let dontUpdate = false;
@@ -157,6 +160,7 @@ function getColor(cell: Cell) {
 function clearField(row = 0) {
     rows.value[row] = [...new Array(letterCount.value)].map(() => new Cell)
     focusTile.value = [row, 0]
+    solveTried.value = false
 }
 
 const alphabet = 'qwertyuiopasdfghjklzxcvbnm'
@@ -190,6 +194,7 @@ function checkWordForCounts(word: string, countObject: any, min = true) {
 }
 
 function solve() {
+    solveTried.value = true
     console.log(checkWordForCounts)
     showLimit.value = 50
     let greens: [string, number][] = []
@@ -336,6 +341,7 @@ function solve() {
     font-size: 18px;
     text-transform: uppercase;
     margin: 0;
+    cursor: pointer;
 }
 
 .more-options {

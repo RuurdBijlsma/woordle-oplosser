@@ -9,4 +9,7 @@
 <script setup lang="ts">
 </script>
 <style scoped>
+* {
+    user-select: none;
+}
 </style>
